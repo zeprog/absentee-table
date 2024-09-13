@@ -170,11 +170,25 @@ async def set_custom_time(message: types.Message, state: FSMContext):
 async def check_reminders():
   while True:
     now = datetime.now().strftime("%H:%M")
-    cursor.execute("SELECT user_id, reminder_time FROM users")
-    for row in cursor.fetchall():
-      user_id, reminder_time = row
-      if reminder_time == now:
-        await bot.send_message(user_id, "Вы сегодня отмечали отсутствующих?", reply_markup=get_confirmation_keyboard())
+    today_weekday = datetime.now().weekday()
+    
+    if today_weekday < 6:
+      cursor.execute("SELECT user_id, reminder_time FROM users")
+      for row in cursor.fetchall():
+        user_id, reminder_time = row
+        if reminder_time == now:
+          try:
+            await bot.send_message(
+              user_id, 
+              "Вы сегодня отмечали отсутствующих?", 
+              reply_markup=get_confirmation_keyboard()
+            )
+            logging.info(f"Sent reminder to user_id: {user_id} at {now}")
+          except Exception as e:
+            logging.error(f"Failed to send reminder to user_id {user_id}: {e}")
+    else:
+      logging.info("Today is Sunday. Skipping reminders.")
+    
     await asyncio.sleep(60)
 
 @dp.callback_query(lambda c: c.data and c.data == 'yes' or c.data == 'no' or c.data == 'Да' or c.data == 'Нет')
